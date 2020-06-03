@@ -1,0 +1,229 @@
+%Import Training Images
+train0 = imread('mnist_train0.jpg');
+train1 = imread('mnist_train1.jpg');
+
+%Binarize Training Images
+train0 = im2bw(train0, 0.5);
+train1 = im2bw(train1, 0.5);
+
+%Find size of training images
+train0_size = size(train0);
+train1_size = size(train1);
+
+%Create index for each 28x28 pixel block
+index0_a = train0_size(1)/28;
+index0_b = train0_size(2)/28;
+
+index1_a = train1_size(1)/28;
+index1_b = train1_size(2)/28;
+
+%Import Testing Images
+test0 = imread('mnist_test0.jpg');
+test1 = imread('mnist_test1.jpg');
+
+%Binarize Testing Images
+test0 = im2bw(test0, 0.5);
+test1 = im2bw(test1, 0.5);
+
+%Find size of testing images
+test0_size = size(test0);
+test1_size = size(test1);
+
+%Create index for each 28x28 pixel block
+index0test_a = test0_size(1)/28;
+index0test_b = test0_size(2)/28;
+
+index1test_a = test1_size(1)/28;
+index1test_b = test1_size(2)/28;
+
+%Loop through MNIST zeros
+d = 1;
+for a = 0:index0_a-1
+    for b = 0:index0_b-1
+        num0 = train0(1+28*a:28+28*a,1+28*b:28+28*b);
+        if num0 == 0
+            break
+        end
+        
+        parameter0 = regionprops(num0,'Eccentricity');
+        
+        mid_row = num0(14,:);
+        locator = find(mid_row==1);
+        if isempty(locator)
+            param_0 = 0;
+        else
+            param_0 = locator(end) - locator(1);
+        end
+        a_0_array(d) = param_0;
+        
+        param_0 = parameter0.Eccentricity;
+        e_0_array(d) = param_0;
+        d = d + 1;
+    end
+end
+
+%Loop through MNIST ones
+d = 1;
+for a = 0:index1_a-1
+    for b = 0:index1_b-1
+        num1 = train1(1+28*a:28+28*a,1+28*b:28+28*b);
+        if num1 == 0
+            break
+        end
+        
+        parameter1 = regionprops(num1,'Eccentricity');
+        
+        mid_row = num1(14,:);
+        locator = find(mid_row==1);
+        if isempty(locator)
+            param_1 = 0;
+        else
+            param_1 = locator(end) - locator(1);
+        end
+        a_1_array(d) = param_1;
+        
+        param_1 = parameter1.Eccentricity;
+        e_1_array(d) = param_1;
+        d = d + 1;
+    end
+end
+
+%Loop through MNIST zeros
+d = 1;
+for a = 0:index0test_a-1
+    for b = 0:index0test_b-1
+        num0 = test0(1+28*a:28+28*a,1+28*b:28+28*b);
+        if num0 == 0
+            break
+        end
+        
+        parameter0 = regionprops(num0,'Eccentricity');
+        
+        mid_row = num0(14,:);
+        locator = find(mid_row==1);
+        if isempty(locator)
+            param_0 = 0;
+        else
+            param_0 = locator(end) - locator(1);
+        end
+        a_0_test_array(d) = param_0;
+        
+        param_0 = parameter0.Eccentricity;
+        e_0_test_array(d) = param_0;
+        d = d + 1;
+    end
+end
+
+%Loop through MNIST ones
+d = 1;
+for a = 0:index1test_a-1
+    for b = 0:index1test_b-1
+        num1 = test1(1+28*a:28+28*a,1+28*b:28+28*b);
+        if num1 == 0
+            break
+        end
+        
+        parameter1 = regionprops(num1,'Eccentricity');
+        
+        mid_row = num1(14,:);
+        locator = find(mid_row==1);
+        if isempty(locator)
+            param_1 = 0;
+        else
+            param_1 = locator(end) - locator(1);
+        end
+        a_1_test_array(d) = param_1;
+        
+        param_1 = parameter1.Eccentricity;
+        e_1_test_array(d) = param_1;
+        d = d + 1;
+    end
+end
+
+zero = zeros(5923,1);
+one = ones(6742,1);
+
+train_set0 = cat(2,zero, a_0_array');
+train_set0 = cat(2, train_set0, e_0_array');
+
+train_set1 = cat(2,one, a_1_array');
+train_set1 = cat(2, train_set1, e_1_array');
+
+train_set_cat = cat(1,train_set0, train_set1);
+
+train_labels = train_set_cat(:,1);
+train_set = train_set_cat(:,2:3);
+
+model = fitcsvm(train_set, train_labels);
+
+true_zero = zeros(980,1);
+true_one = ones(1135,1);
+
+test_set0 = cat(2,true_zero,a_0_test_array');
+test_set0 = cat(2,test_set0,e_0_test_array');
+
+test_set1 = cat(2,true_one,a_1_test_array');
+test_set1 = cat(2,test_set1,e_1_test_array');
+
+test_set_cat = cat(1,test_set0,test_set1);
+
+predicted_labels = predict(model,test_set_cat(:,2:3));
+
+label_comparison = cat(2, test_set_cat(:,1), predicted_labels);
+
+correct = 0;
+incorrect = 0;
+
+for char = 1:2115
+    if (label_comparison(char,1) == label_comparison(char,2))
+        correct = correct + 1;
+    else
+        incorrect = incorrect + 1;
+    end
+end
+
+Accuracy = correct / (correct + incorrect)
+%Accuracy = 0.9943 
+
+predict_training = predict(model,train_set_cat(:,2:3));
+label_train_comp =  cat(2,train_set_cat(:,1), predict_training);
+correct_train = 0;
+incorrect_train = 0;
+
+for char = 1:12665
+    if (label_train_comp(char,1) == label_train_comp(char,2))
+        correct_train = correct_train + 1;
+    else
+        incorrect_train = incorrect_train + 1;
+    end
+end
+
+Train_Accuracy = correct_train / (correct_train + incorrect_train)
+mrd = linspace(0,20);
+ecc = linspace(0,1);
+[XX,YY] = meshgrid(mrd,ecc);
+
+pred = [XX(:),YY(:)];
+p = predict(model,pred);
+
+figure
+gscatter(pred(:,1),pred(:,2),p)
+hold on
+scatter(a_0_array,e_0_array,20,'red')
+scatter(a_1_array,e_1_array,20,'blue')
+xlabel('Middle Row Diameter')
+ylabel('Eccentricity')
+legend('Zero Boundary','One Boundary','Real Zero','Real One')
+title('SVM on Training Data (Zeros and Ones)')
+hold off
+
+figure
+gscatter(pred(:,1),pred(:,2),p)
+hold on
+scatter(a_0_test_array,e_0_test_array,20,'red')
+scatter(a_1_test_array,e_1_test_array,20,'blue')
+xlabel('Middle Row Diameter')
+ylabel('Eccentricity')
+legend('Zero Boundary','One Boundary','Real Zero','Real One')
+title('SVM on Testing Data (Zeros and Ones)')
+hold off
